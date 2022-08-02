@@ -121,7 +121,7 @@ enum HaierMode : uint8_t {
   MODE_DRY = 4,
   MODE_HEAT = 8,
   MODE_FAN = 12,
-  MODE_OFF = 255,
+  MODE_OFF = 15,
 };
 
 class Frame {
@@ -129,6 +129,8 @@ class Frame {
   size_t get_length() const { return this->buf_[OFFSET_LENGTH]; }
   uint8_t get_type() const { return this->buf_[OFFSET_TYPE]; }
   uint8_t get_target_temperature() const { return this->get_data_(12) + 16; }
+  HaierMode get_mode() const;
+  void set_mode(HaierMode mode);
   void update_crc();
 
  protected:
@@ -140,8 +142,6 @@ class Frame {
   static const size_t OFFSET_MODE_FAN = 14;
   bool get_power_state_() const { return this->get_data_(17, 1); }
   void set_power_state_(bool state) { this->set_data_(state, 17, 1); }
-  HaierMode get_mode_() const;
-  void set_mode_(HaierMode mode);
   uint8_t get_data_(size_t idx, uint8_t mask = 255, size_t shift = 0) const {
     return (this->buf_[idx] >> shift) & mask;
   }

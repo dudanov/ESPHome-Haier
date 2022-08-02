@@ -1,12 +1,12 @@
 #include "Haier.h"
 
-HaierMode Frame::get_mode_() const {
+HaierMode Frame::get_mode() const {
   if (!this->get_power_state_())
     return HaierMode::MODE_OFF;
   return static_cast<HaierMode>(this->get_data_(14, 15, 4));
 }
 
-void Frame::set_mode_(HaierMode mode) {
+void Frame::set_mode(HaierMode mode) {
   if (mode != HaierMode::MODE_OFF) {
     this->set_power_state_(true);
     this->set_data_(mode, 14, 15, 4);
