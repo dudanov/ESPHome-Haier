@@ -129,16 +129,11 @@ uint8_t getChecksum(const uint8_t *message) {
 }
 
 uint16_t crc16(const uint8_t *data, size_t size) {
-  static const uint16_t POLY = 0xA001;
   uint16_t crc = 0;
   while (size--) {
     crc ^= static_cast<uint16_t>(*data++);
-    for (unsigned n = 0; n < 8; n++) {
-      if (crc & 1)
-        crc = (crc >> 1) ^ POLY;
-      else
-        crc = (crc >> 1);
-    }
+    for (unsigned n = 0; n < 8; n++)
+      crc = (crc >> 1) ^ ((crc & 1) ? 0xA001 : 0x0000);
   }
   return crc;
 }
