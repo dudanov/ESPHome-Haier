@@ -151,7 +151,10 @@ class Frame {
 };
 
 class FrameReader : public Frame {
-  bool read(Stream *stream) {
+ public:
+  using callback = std::function<void(const Frame &)>;
+  void on_frame(callback cb) { this->cb_ = cb; }
+  void read(Stream *stream) {
     while (stream->available() > 0) {
       const size_t idx = this->buf_.size();
       const uint8_t x = stream->read();
@@ -161,14 +164,20 @@ class FrameReader : public Frame {
       }
       this->buf_.push_back(x);
       if (idx >= 5 && (idx - 5) == this->get_length_()) {
-        const auto p = this->buf_.end();
-        const uint8_t crc8 = p[-3];
-        const uint16_t crc16 = 256 * p[-2] + p[-1];
-        if (crc8 == this->calc_crc8_() && crc16 == this->calc_crc16_()) {
-          ;
-        }
+        if (this->cb_ != nullptr && this->is_valid_())
+          this->cb_(*this);
+        this->buf_.clear();
       }
     }
+  }
+
+ protected:
+  callback cb_{nullptr};
+  bool is_valid_() const {
+    const auto p = this->buf_.end();
+    const uint16_t crc16 = 256 * p[-2] + p[-1];
+    const uint8_t crc8 = p[-3];
+    return this->calc_crc8_() == crc8 && this->calc_crc16_() == crc16;
   }
 };
 
