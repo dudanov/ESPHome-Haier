@@ -34,7 +34,7 @@ uint8_t Frame::calc_crc8_() const {
   auto it = this->buf_.begin() + OFFSET_LENGTH;
   const auto end = it + *it;
   uint8_t crc = 0;
-  while (it != end)
+  while (it <= end)
     crc += *it++;
   return crc;
 }
@@ -43,7 +43,7 @@ uint16_t Frame::calc_crc16_() const {
   auto it = this->buf_.begin() + OFFSET_LENGTH;
   const auto end = it + *it;
   uint16_t crc = 0;
-  while (it != end) {
+  while (it <= end) {
     crc ^= static_cast<uint16_t>(*it++);
     for (size_t n = 0; n < 8; n++)
       crc = (crc >> 1) ^ ((crc & 1) ? 0xA001 : 0x0000);
