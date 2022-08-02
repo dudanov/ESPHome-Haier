@@ -24,7 +24,7 @@ void Frame::update_crc() {
     return;
   if (idx < size)
     this->buf_.erase(this->buf_.begin() + idx, this->buf_.end());
-  const auto crc16 = this->calc_crc16_();
+  const uint16_t crc16 = this->calc_crc16_();
   this->buf_.push_back(this->calc_crc8_());
   this->buf_.push_back(crc16 / 256);
   this->buf_.push_back(crc16 % 256);
@@ -32,7 +32,7 @@ void Frame::update_crc() {
 
 uint8_t Frame::calc_crc8_() const {
   auto it = this->buf_.begin() + OFFSET_LENGTH;
-  const auto end = it + this->get_length();
+  const auto end = it + *it;
   uint8_t crc = 0;
   while (it != end)
     crc += *it++;
@@ -41,7 +41,7 @@ uint8_t Frame::calc_crc8_() const {
 
 uint16_t Frame::calc_crc16_() const {
   auto it = this->buf_.begin() + OFFSET_LENGTH;
-  const auto end = it + this->get_length();
+  const auto end = it + *it;
   uint16_t crc = 0;
   while (it != end) {
     crc ^= static_cast<uint16_t>(*it++);
