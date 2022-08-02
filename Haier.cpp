@@ -31,8 +31,6 @@ void Frame::update_crc() {
 }
 
 uint8_t Frame::calc_crc8_() const {
-  if (this->buf_.size() <= OFFSET_LENGTH)
-    return 0;
   auto it = this->buf_.begin() + OFFSET_LENGTH;
   const auto end = it + this->get_length();
   uint8_t crc = 0;
@@ -42,8 +40,6 @@ uint8_t Frame::calc_crc8_() const {
 }
 
 uint16_t Frame::calc_crc16_() const {
-  if (this->buf_.size() <= OFFSET_LENGTH)
-    return 0;
   auto it = this->buf_.begin() + OFFSET_LENGTH;
   const auto end = it + this->get_length();
   uint16_t crc = 0;
