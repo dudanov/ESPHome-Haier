@@ -50,7 +50,7 @@ void FrameReader::read() {
       continue;
     }
     this->buf_.push_back(data);
-    if (idx >= 5 && (idx - 5) == this->get_length_()) {
+    if (idx >= 5 && idx == this->get_length_() + 5) {
       if (this->is_valid_())
         this->cb_(*this);
       this->buf_.clear();
