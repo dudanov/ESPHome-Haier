@@ -6,6 +6,15 @@ HaierMode Frame::get_mode_() const {
   return static_cast<HaierMode>(this->get_data_(14, 15, 4));
 }
 
+void Frame::set_mode_(HaierMode mode) {
+  if (mode != HaierMode::MODE_OFF) {
+    this->set_power_state_(true);
+    this->set_data_(mode, 14, 15, 4);
+  } else {
+    this->set_power_state_(false);
+  }
+}
+
 void Frame::update_crc() {
   const size_t size = this->buf_.size();
   if (size <= OFFSET_LENGTH)

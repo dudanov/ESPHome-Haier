@@ -141,12 +141,13 @@ class Frame {
   bool get_power_state_() const { return this->get_data_(17, 1); }
   void set_power_state_(bool state) { this->set_data_(state, 17, 1); }
   HaierMode get_mode_() const;
+  void set_mode_(HaierMode mode);
   uint8_t get_data_(size_t idx, uint8_t mask = 255, size_t shift = 0) const {
     return (this->buf_[idx] >> shift) & mask;
   }
   void set_data_(uint8_t value, size_t idx, uint8_t mask = 255, size_t shift = 0) {
     this->buf_[idx] &= ~(mask << shift);
-    this->buf_[idx] |= value << shift;
+    this->buf_[idx] |= (value & mask) << shift;
   }
   uint8_t calc_crc8_() const;
   uint16_t calc_crc16_() const;
