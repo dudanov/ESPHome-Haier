@@ -118,24 +118,59 @@ using namespace esphome::climate;
 #define MIN_SET_TEMPERATURE 16
 #define MAX_SET_TEMPERATURE 30
 
-uint8_t calc_crc8(const uint8_t *msg) {
-  uint8_t crc = 0;
-  uint8_t size = *(msg += 2);
-  while (size--)
-    crc += *msg++;
-  return crc;
-}
+class Frame {
+ protected:
+  std::vector<uint8_t> buf_;
+  static const size_t OFFSET_LENGTH = 2;
 
-uint16_t calc_crc16(const uint8_t *msg) {
-  uint16_t crc = 0;
-  uint8_t size = *(msg += 2);
-  while (size--) {
-    crc ^= static_cast<uint16_t>(*msg++);
-    for (unsigned n = 0; n < 8; n++)
-      crc = (crc >> 1) ^ ((crc & 1) ? 0xA001 : 0x0000);
+  size_t get_length_() const { return this->buf_[OFFSET_LENGTH]; }
+  uint8_t calc_crc8_() const {
+    uint8_t crc = 0;
+    if (this->buf_.size() > OFFSET_LENGTH) {
+      auto it = this->buf_.begin() + OFFSET_LENGTH;
+      const auto end = it + this->get_length_();
+      while (it != end)
+        crc += *it++;
+    }
+    return crc;
   }
-  return crc;
-}
+
+  uint16_t calc_crc16_() const {
+    uint16_t crc = 0;
+    if (this->buf_.size() > OFFSET_LENGTH) {
+      auto it = this->buf_.begin() + OFFSET_LENGTH;
+      const auto end = it + this->get_length_();
+      while (it != end) {
+        crc ^= static_cast<uint16_t>(*it++);
+        for (size_t n = 0; n < 8; n++)
+          crc = (crc >> 1) ^ ((crc & 1) ? 0xA001 : 0x0000);
+      }
+    }
+    return crc;
+  }
+};
+
+class FrameReader : public Frame {
+  bool read(Stream *stream) {
+    while (stream->available() > 0) {
+      const size_t idx = this->buf_.size();
+      const uint8_t x = stream->read();
+      if (idx < OFFSET_LENGTH && x != 255) {
+        this->buf_.clear();
+        continue;
+      }
+      this->buf_.push_back(x);
+      if (idx >= 5 && (idx - 5) == this->get_length_()) {
+        const auto p = this->buf_.end();
+        const uint8_t crc8 = p[-3];
+        const uint16_t crc16 = 256 * p[-2] + p[-1];
+        if (crc8 == this->calc_crc8_() && crc16 == this->calc_crc16_()) {
+          ;
+        }
+      }
+    }
+  }
+};
 
 String getHex(uint8_t *message, uint8_t size) {
   String raw;
@@ -157,9 +192,9 @@ void sendData(uint8_t *message) {
   uint8_t crc = calc_crc8(message);
   uint16_t crc_16 = calc_crc16(message);
 
-  message[crc_offset] = crc;
-  message[crc_offset + 1] = (crc_16 >> 8) & 0xFF;
-  message[crc_offset + 2] = crc_16 & 0xFF;
+  message[crc_offset] = crc;                       // -3
+  message[crc_offset + 1] = (crc_16 >> 8) & 0xFF;  // -2
+  message[crc_offset + 2] = crc_16 & 0xFF;         // -1
 
   Serial.write(message, size);
   auto raw = getHex(message, size);
@@ -190,7 +225,6 @@ class Haier : public Climate, public PollingComponent {
 
   bool GetControlBit(uint8_t byte_number, uint8_t bit_number) {
     return bitRead(id(control_command)[byte_number], bit_number);
-    ;
   }
 
   void SetControlBit(uint8_t byte_number, uint8_t bit_number, bool bit_state) {
@@ -231,20 +265,6 @@ class Haier : public Climate, public PollingComponent {
 
   void loop() override {
     // uint8_t data[MAX_MESSAGE_SIZE] = {255, 255, 0};  // set the two header bytes and a null length
-
-    std::vector<uint8_t> buf;
-
-    while (Serial.available()) {
-      const size_t idx = buf.size();
-      const uint8_t x = Serial.read();
-      if (idx < 2 && x != 0xFF) {
-        buf.clear();
-        continue;
-      }
-      buf.push_back(x);
-      if (idx >= 2 && idx >= buf[2]) {
-      }
-    }
 
     if (Serial.available() > 13) {                                     // we want at least 13 bytes, smallest message?
       if (((Serial.read() == HEADER) && (Serial.read() == HEADER))) {  // keep looking for two header bytes
