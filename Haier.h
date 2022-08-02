@@ -3,11 +3,13 @@
 
 //#include "esphome.h"
 #include "esphome/components/climate/climate.h"
+#include "esphome/components/uart/uart_component.h"
 #include <string>
 #include <Arduino.h>
 
 using namespace esphome;
 using namespace esphome::climate;
+using esphome::uart::UARTComponent;
 
 // message formatting
 #define HEADER 255  // first two bytes are 255
@@ -154,10 +156,11 @@ class FrameReader : public Frame {
  public:
   using callback = std::function<void(const Frame &)>;
   void on_frame(callback cb) { this->cb_ = cb; }
-  void read(Stream *stream) {
-    while (stream->available() > 0) {
+  void read(UARTComponent *uart) {
+    while (uart->available() > 0) {
+      uint8_t x;
+      uart->read_byte(&x);
       const size_t idx = this->buf_.size();
-      const uint8_t x = stream->read();
       if (idx < OFFSET_LENGTH && x != 255) {
         this->buf_.clear();
         continue;
@@ -172,7 +175,7 @@ class FrameReader : public Frame {
   }
 
  protected:
-  callback cb_{nullptr};
+  callback cb_{};
   bool is_valid_() const {
     const auto p = this->buf_.end();
     const uint16_t crc16 = 256 * p[-2] + p[-1];
