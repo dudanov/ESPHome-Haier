@@ -36,18 +36,6 @@ using esphome::uart::UARTComponent;
 #define VERTICAL_SWING_HEALTH_UP 0x01
 #define VERTICAL_SWING_HEALTH_DOWN 0x03
 #define VERTICAL_SWING_AUTO 0x0C
-#define MODE_FAN_OFFSET 14
-#define MODE_MSK 0xF0
-#define MODE_AUTO 0x00
-#define MODE_DRY 0x40
-#define MODE_COOL 0x20
-#define MODE_HEAT 0x80
-#define MODE_FAN 0xC0
-#define FAN_MSK 0x0F
-#define FAN_LOW 0x03
-#define FAN_MID 0x02
-#define FAN_HIGH 0x01
-#define FAN_AUTO 0x05
 // 15 not tested, not sure
 #define STATUS_DATA1_OFFSET 16
 #define AWAY_BIT (0)     // away mode for 10c
@@ -119,14 +107,47 @@ enum FrameType : uint8_t {
 #define MIN_SET_TEMPERATURE 16
 #define MAX_SET_TEMPERATURE 30
 
+#define MODE_FAN_OFFSET 14
+#define MODE_MSK 0xF0
+#define FAN_MSK 0x0F
+#define FAN_LOW 0x03
+#define FAN_MID 0x02
+#define FAN_HIGH 0x01
+#define FAN_AUTO 0x05
+
+enum HaierMode : uint8_t {
+  MODE_AUTO = 0,
+  MODE_COOL = 2,
+  MODE_DRY = 4,
+  MODE_HEAT = 8,
+  MODE_FAN = 12,
+  MODE_OFF = 255,
+};
+
 class Frame {
-  friend class FrameReader;
+ public:
+  size_t get_length() const { return this->buf_[OFFSET_LENGTH]; }
+  uint8_t get_type() const { return this->buf_[OFFSET_TYPE]; }
+  uint8_t get_target_temperature() const { return this->get_data_(12) + 16; }
   void update_crc();
 
  protected:
+  friend class FrameReader;
   std::vector<uint8_t> buf_;
   static const size_t OFFSET_LENGTH = 2;
-  size_t get_length_() const { return this->buf_[OFFSET_LENGTH]; }
+  static const size_t OFFSET_TYPE = 9;
+  static const size_t OFFSET_TEMPERATURE = 12;
+  static const size_t OFFSET_MODE_FAN = 14;
+  bool get_power_state_() const { return this->get_data_(17, 1); }
+  void set_power_state_(bool state) { this->set_data_(state, 17, 1); }
+  HaierMode get_mode_() const;
+  uint8_t get_data_(size_t idx, uint8_t mask = 255, size_t shift = 0) const {
+    return (this->buf_[idx] >> shift) & mask;
+  }
+  void set_data_(uint8_t value, size_t idx, uint8_t mask = 255, size_t shift = 0) {
+    this->buf_[idx] &= ~(mask << shift);
+    this->buf_[idx] |= value << shift;
+  }
   uint8_t calc_crc8_() const;
   uint16_t calc_crc16_() const;
 };

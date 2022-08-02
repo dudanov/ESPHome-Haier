@@ -1,10 +1,16 @@
 #include "Haier.h"
 
+HaierMode Frame::get_mode_() const {
+  if (!this->get_power_state_())
+    return HaierMode::MODE_OFF;
+  return static_cast<HaierMode>(this->get_data_(14, 15, 4));
+}
+
 void Frame::update_crc() {
   const size_t size = this->buf_.size();
   if (size <= OFFSET_LENGTH)
     return;
-  const size_t idx = this->get_length_() + 3;
+  const size_t idx = this->get_length() + 3;
   if (idx > size)
     return;
   if (idx < size)
@@ -19,7 +25,7 @@ uint8_t Frame::calc_crc8_() const {
   uint8_t crc = 0;
   if (this->buf_.size() > OFFSET_LENGTH) {
     auto it = this->buf_.begin() + OFFSET_LENGTH;
-    const auto end = it + this->get_length_();
+    const auto end = it + this->get_length();
     while (it != end)
       crc += *it++;
   }
@@ -30,7 +36,7 @@ uint16_t Frame::calc_crc16_() const {
   uint16_t crc = 0;
   if (this->buf_.size() > OFFSET_LENGTH) {
     auto it = this->buf_.begin() + OFFSET_LENGTH;
-    const auto end = it + this->get_length_();
+    const auto end = it + this->get_length();
     while (it != end) {
       crc ^= static_cast<uint16_t>(*it++);
       for (size_t n = 0; n < 8; n++)
@@ -50,7 +56,7 @@ void FrameReader::read() {
       continue;
     }
     this->buf_.push_back(data);
-    if (idx >= 5 && idx == this->get_length_() + 5) {
+    if (idx >= 5 && idx == this->get_length() + 5) {
       if (this->is_valid_())
         this->cb_(*this);
       this->buf_.clear();
