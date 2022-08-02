@@ -121,6 +121,7 @@ enum FrameType : uint8_t {
 
 class Frame {
   friend class FrameReader;
+  void update_crc();
 
  protected:
   std::vector<uint8_t> buf_;
@@ -138,7 +139,7 @@ class FrameReader : public Frame {
   // Set callback function
   void on_frame(callback cb) { this->cb_ = cb; }
   // Write this frame to UART
-  void write() { this->uart_->write_array(this->buf_); }
+  void write() { this->write(*this); }
   // Write other frame to UART
   void write(const Frame &frame) { this->uart_->write_array(frame.buf_); }
   // Read frame. Call callback function if valid frame was received.

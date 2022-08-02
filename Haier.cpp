@@ -1,5 +1,20 @@
 #include "Haier.h"
 
+void Frame::update_crc() {
+  const size_t size = this->buf_.size();
+  if (size <= OFFSET_LENGTH)
+    return;
+  const size_t idx = this->get_length_() + 3;
+  if (idx > size)
+    return;
+  if (idx < size)
+    this->buf_.erase(this->buf_.begin() + idx, this->buf_.end());
+  const auto crc16 = this->calc_crc16_();
+  this->buf_.push_back(this->calc_crc8_());
+  this->buf_.push_back(crc16 / 256);
+  this->buf_.push_back(crc16 % 256);
+}
+
 uint8_t Frame::calc_crc8_() const {
   uint8_t crc = 0;
   if (this->buf_.size() > OFFSET_LENGTH) {
