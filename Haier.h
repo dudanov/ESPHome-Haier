@@ -118,20 +118,19 @@ using namespace esphome::climate;
 #define MIN_SET_TEMPERATURE 16
 #define MAX_SET_TEMPERATURE 30
 
-uint8_t getChecksum(const uint8_t *message) {
-  uint8_t frame_length = message[MESSAGE_LENGTH_OFFSET];
+uint8_t calc_crc8(const uint8_t *msg) {
   uint8_t crc = 0;
-
-  for (int i = MESSAGE_LENGTH_OFFSET; i <= (frame_length + 1); i++) {
-    crc += message[i];
-  }
+  uint8_t size = *(msg += 2);
+  while (size--)
+    crc += *msg++;
   return crc;
 }
 
-uint16_t crc16(const uint8_t *data, size_t size) {
+uint16_t calc_crc16(const uint8_t *msg) {
   uint16_t crc = 0;
+  uint8_t size = *(msg += 2);
   while (size--) {
-    crc ^= static_cast<uint16_t>(*data++);
+    crc ^= static_cast<uint16_t>(*msg++);
     for (unsigned n = 0; n < 8; n++)
       crc = (crc >> 1) ^ ((crc & 1) ? 0xA001 : 0x0000);
   }
@@ -155,8 +154,8 @@ void sendData(uint8_t *message) {
   uint8_t size = message[MESSAGE_LENGTH_OFFSET];
   size += 5;
   uint8_t crc_offset = size - 3;
-  uint8_t crc = getChecksum(message);
-  uint16_t crc_16 = crc16(&(message[2]), crc_offset - 2);
+  uint8_t crc = calc_crc8(message);
+  uint16_t crc_16 = calc_crc16(message);
 
   message[crc_offset] = crc;
   message[crc_offset + 1] = (crc_16 >> 8) & 0xFF;
@@ -260,7 +259,7 @@ class Haier : public Climate, public PollingComponent {
                                                   // we dont verify the crc 16 so we dont read those bytes
         message_length += MESSAGE_LENGTH_OFFSET;  // Include the bytes from before our length byte into our length
 
-        uint8_t check = getChecksum(data);  // calculate the checksum
+        uint8_t check = calc_crc8(data);  // calculate the checksum
 
         if (check != data[message_length]) {  // check the message to verify its checksum matches
           ESP_LOGW("Haier", "Invalid checksum (%d vs %d)", check, data[message_length]);  // show checksum issue
