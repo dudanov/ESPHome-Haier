@@ -94,20 +94,20 @@ using esphome::uart::UARTComponent;
 #define COMMAND_SOURCE_BYTE 27  // command source
 
 // message types seen and used
-#define SEND_TYPE_POLL 0x73      // next message is poll, enables command and poll messages to be replied to
-#define RESPONSE_TYPE_POLL 0x74  // message was received
-
-#define SEND_POLL 0x01      // send a poll
-#define RESPONSE_POLL 0x02  // response of poll
-#define ERROR_POLL 0x03     // the ac sends this when it didnt like our last command message
-
-#define SEND_TYPE_WIFI \
-  0xFC  // next message is wifi, enables wifi messages to be replied to, for the signal strength indicator, disables
-        // poll messages
+enum FrameType : uint8_t {
+  PollRequest = 0x73,         // next message is poll, enables command and poll messages to be replied to
+  PollResponse = 0x74,        // message was received
+  StateRequest = 0x01,        // send a poll
+  StateResponse = 0x02,       // response of poll
+  StateErrorResponse = 0x03,  // the ac sends this when it didnt like our last command message
+// next message is wifi, enables wifi messages to be replied to, for the signal strength indicator, disables poll
+// messages
+#define SEND_TYPE_WIFI 0xFC
 #define RESPONSE_TYPE_WIFI 0xFD  // confirmed
-#define SEND_WIFI 0xF7           // current signal strength, no reply to this
-#define SEND_COMMAND 0x60        // send a control command, no reply to this
-#define INIT_COMMAND 0x61        // this enables coms? magic message
+  WiFiSignal = 0xF7,             // current signal strength, no reply to this
+  Command = 0x60,                // send a control command, no reply to this
+  Init = 0x61,                   // this enables coms? magic message
+};
 
 #define MAX_MESSAGE_SIZE 64  // 64 should be enough to cover largest messages we send and receive, for now.
 #define CRC_OFFSET(message) (message[2])
@@ -120,6 +120,8 @@ using esphome::uart::UARTComponent;
 #define MAX_SET_TEMPERATURE 30
 
 class Frame {
+  friend class FrameReader;
+
  protected:
   std::vector<uint8_t> buf_;
   static const size_t OFFSET_LENGTH = 2;
@@ -153,12 +155,17 @@ class Frame {
 
 class FrameReader : public Frame {
  public:
-  using callback = std::function<void(const Frame &)>;
+  using callback = std::function<void(FrameReader &)>;
+  // Set UART component
   void set_uart(UARTComponent *uart) { this->uart_ = uart; }
+  // Set callback function
   void on_frame(callback cb) { this->cb_ = cb; }
+  // Write this frame to UART
+  void write() { this->uart_->write_array(this->buf_); }
+  // Write other frame to UART
+  void write(const Frame &frame) { this->uart_->write_array(frame.buf_); }
+  // Read frame. Call callback function if valid frame was received.
   void read() {
-    if (this->uart_ == nullptr)
-      return;
     while (this->uart_->available() > 0) {
       uint8_t x;
       const size_t idx = this->buf_.size();
@@ -169,13 +176,12 @@ class FrameReader : public Frame {
       }
       this->buf_.push_back(x);
       if (idx >= 5 && (idx - 5) == this->get_length_()) {
-        if (this->cb_ != nullptr && this->is_valid_())
+        if (this->is_valid_())
           this->cb_(*this);
         this->buf_.clear();
       }
     }
   }
-  void write(const Frame &frame) { this->uart_->write_array(frame.buf_); }
 
  protected:
   UARTComponent *uart_{};
@@ -221,15 +227,15 @@ class Haier : public Climate, public PollingComponent {
  private:
   uint8_t status[MAX_MESSAGE_SIZE];  // where we hold our status message
   uint8_t initialization_1[15] = {
-      HEADER, HEADER, 10,           0, 0, 0, 0,
-      0,      0,      INIT_COMMAND, 0, 7};  // enables coms? magic message, needs some timing pause after this?
-  uint8_t type_poll[12] = {HEADER, HEADER,        8, 64, 0, 0, 0, 0,
-                           0,      SEND_TYPE_POLL};  // sets message type, we only use the poll type for now
+      HEADER, HEADER, 10, 0,    0, 0,
+      0,      0,      0,  Init, 0, 7};  // enables coms? magic message, needs some timing pause after this?
+  uint8_t type_poll[12] = {HEADER, HEADER, 8, 64, 0,
+                           0,      0,      0, 0,  PollRequest};  // sets message type, we only use the poll type for now
   uint8_t type_wifi[12] = {HEADER, HEADER, 8, 64, 0, 0, 0, 0, 0, SEND_TYPE_WIFI};
-  uint8_t wifi_status[17] = {HEADER, HEADER,    12, 64, 0, 0, 0, 0,
-                             0,      SEND_WIFI, 0,  0,  0, 50};  // last byte is signal strength, second to last goes to
-                                                                 // 1 when trying to connect, not used for now
-  uint8_t poll[15] = {HEADER, HEADER, 10, 64, 0, 0, 0, 0, 0, SEND_POLL, 77, 1};  // ask for the status
+  uint8_t wifi_status[17] = {HEADER, HEADER,     12, 64, 0, 0, 0, 0,
+                             0,      WiFiSignal, 0,  0,  0, 50};  // last byte is signal strength, second to last goes
+                                                                  // to 1 when trying to connect, not used for now
+  uint8_t poll[15] = {HEADER, HEADER, 10, 64, 0, 0, 0, 0, 0, StateRequest, 77, 1};  // ask for the status
 
   uint8_t climate_mode_fan_speed = FAN_AUTO;
   uint8_t fan_mode_fan_speed = FAN_MID;
@@ -282,7 +288,7 @@ class Haier : public Climate, public PollingComponent {
   void loop() override {
     // uint8_t data[MAX_MESSAGE_SIZE] = {255, 255, 0};  // set the two header bytes and a null length
     this->reader_.read();
-    if (data[MESSAGE_TYPE_OFFSET] == RESPONSE_POLL) {
+    if (data[MESSAGE_TYPE_OFFSET] == StateResponse) {
       auto raw = getHex(data, message_length);  // show the message without checksum
       ESP_LOGD("Haier", "Received Status Message: %s ", raw.c_str());
       memcpy(status, data, message_length);
@@ -290,10 +296,10 @@ class Haier : public Climate, public PollingComponent {
     } else if (data[MESSAGE_TYPE_OFFSET] == RESPONSE_TYPE_WIFI) {
       ESP_LOGD("Haier", "Received Reponse to WiFi Type Message:");
       sendData(wifi_status);  // not implemented yet, since we never send the message to get into wifi message type
-    } else if (data[MESSAGE_TYPE_OFFSET] == RESPONSE_TYPE_POLL) {
+    } else if (data[MESSAGE_TYPE_OFFSET] == PollResponse) {
       ESP_LOGD("Haier", "Received Reponse to Poll Type Message:");
       // not implemented yet, since we never send the message except once during init
-    } else if (data[MESSAGE_TYPE_OFFSET] == ERROR_POLL) {
+    } else if (data[MESSAGE_TYPE_OFFSET] == StateErrorResponse) {
       ESP_LOGD("Haier", "Command message received, but it had invalid settings");
     } else {
       auto raw = getHex(data, message_length);
