@@ -1,11 +1,12 @@
-#ifndef HAIER_ESP_HAIER_H
-#define HAIER_ESP_HAIER_H
+#pragma once
 
 //#include "esphome.h"
 #include "esphome/components/climate/climate.h"
 #include "esphome/components/uart/uart_component.h"
 #include <string>
 #include <Arduino.h>
+
+namespace haier {
 
 using namespace esphome;
 using namespace esphome::climate;
@@ -83,18 +84,17 @@ using esphome::uart::UARTComponent;
 
 // message types seen and used
 enum FrameType : uint8_t {
-  PollRequest = 0x73,         // next message is poll, enables command and poll messages to be replied to
-  PollResponse = 0x74,        // message was received
-  StateRequest = 0x01,        // send a poll
-  StateResponse = 0x02,       // response of poll
-  StateErrorResponse = 0x03,  // the ac sends this when it didnt like our last command message
-// next message is wifi, enables wifi messages to be replied to, for the signal strength indicator, disables poll
-// messages
-#define SEND_TYPE_WIFI 0xFC
-#define RESPONSE_TYPE_WIFI 0xFD  // confirmed
-  WiFiSignal = 0xF7,             // current signal strength, no reply to this
-  Command = 0x60,                // send a control command, no reply to this
-  Init = 0x61,                   // this enables coms? magic message
+  StateRequest = 0x01,   // send a poll
+  StateResponse = 0x02,  // response of poll
+  ErrorResponse = 0x03,  // the ac sends this when it didnt like our last command message
+  Command = 0x60,        // send a control command, no reply to this
+  Init = 0x61,           // this enables coms? magic message
+  PollRequest = 0x73,    // next message is poll, enables command and poll messages to be replied to
+  PollResponse = 0x74,   // message was received
+  WiFiSignal = 0xF7,     // current signal strength, no reply to this
+  WiFiRequest = 0xFC,    // next message is wifi, enables wifi messages to be replied to, for the signal strength
+                         // indicator, disables poll messages
+  WiFiResponse = 0xFD,   // confirmed
 };
 
 #define MAX_MESSAGE_SIZE 64  // 64 should be enough to cover largest messages we send and receive, for now.
@@ -126,6 +126,7 @@ enum HaierMode : uint8_t {
 
 class Frame {
  public:
+  Frame(FrameType type);
   size_t get_length() const { return this->buf_[OFFSET_LENGTH]; }
   uint8_t get_type() const { return this->buf_[OFFSET_TYPE]; }
   uint8_t get_target_temperature() const { return this->get_data_(12) + 16; }
@@ -210,7 +211,7 @@ class Haier : public Climate, public PollingComponent {
       0,      0,      0,  Init, 0, 7};  // enables coms? magic message, needs some timing pause after this?
   uint8_t type_poll[12] = {HEADER, HEADER, 8, 64, 0,
                            0,      0,      0, 0,  PollRequest};  // sets message type, we only use the poll type for now
-  uint8_t type_wifi[12] = {HEADER, HEADER, 8, 64, 0, 0, 0, 0, 0, SEND_TYPE_WIFI};
+  uint8_t type_wifi[12] = {HEADER, HEADER, 8, 64, 0, 0, 0, 0, 0, WiFiRequest};
   uint8_t wifi_status[17] = {HEADER, HEADER,     12, 64, 0, 0, 0, 0,
                              0,      WiFiSignal, 0,  0,  0, 50};  // last byte is signal strength, second to last goes
                                                                   // to 1 when trying to connect, not used for now
@@ -272,13 +273,13 @@ class Haier : public Climate, public PollingComponent {
       ESP_LOGD("Haier", "Received Status Message: %s ", raw.c_str());
       memcpy(status, data, message_length);
       parseStatus();
-    } else if (data[MESSAGE_TYPE_OFFSET] == RESPONSE_TYPE_WIFI) {
+    } else if (data[MESSAGE_TYPE_OFFSET] == WiFiResponse) {
       ESP_LOGD("Haier", "Received Reponse to WiFi Type Message:");
       sendData(wifi_status);  // not implemented yet, since we never send the message to get into wifi message type
     } else if (data[MESSAGE_TYPE_OFFSET] == PollResponse) {
       ESP_LOGD("Haier", "Received Reponse to Poll Type Message:");
       // not implemented yet, since we never send the message except once during init
-    } else if (data[MESSAGE_TYPE_OFFSET] == StateErrorResponse) {
+    } else if (data[MESSAGE_TYPE_OFFSET] == ErrorResponse) {
       ESP_LOGD("Haier", "Command message received, but it had invalid settings");
     } else {
       auto raw = getHex(data, message_length);
@@ -550,4 +551,5 @@ class Haier : public Climate, public PollingComponent {
     sendData(id(control_command));  // send the data after all our changes, no need to send after each change
   }
 };
-#endif  // HAIER_ESP_HAIER_H
+
+}  // namespace haier

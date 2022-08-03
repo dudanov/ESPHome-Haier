@@ -1,5 +1,29 @@
 #include "Haier.h"
 
+namespace haier {
+
+Frame::Frame(FrameType type) {
+  switch (type) {
+    case FrameType::StateRequest:
+      this->buf_ = {255, 255, 10, 64, 0, 0, 0, 0, 0, StateRequest, 77, 1};
+      break;
+    case FrameType::Command:
+      this->buf_ = {255, 255, 20, 64, 0, 0, 0, 0, 0, 1, Command, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+      break;
+    case FrameType::WiFiSignal:
+      this->buf_ = {255, 255, 12, 64, 0, 0, 0, 0, 0, WiFiSignal, 0, 0, 0, 50};
+      break;
+    case FrameType::Init:
+      this->buf_ = {255, 255, 10, 0, 0, 0, 0, 0, 0, Init, 0, 7};
+      break;
+    case FrameType::PollRequest:
+      this->buf_ = {255, 255, 8, 64, 0, 0, 0, 0, 0, PollRequest};
+      break;
+    default:
+      break;
+  }
+}
+
 HaierMode Frame::get_mode() const {
   if (!this->get_power_state_())
     return HaierMode::MODE_OFF;
@@ -75,3 +99,5 @@ bool FrameReader::is_valid_() const {
   const uint8_t crc8 = p[-3];
   return this->calc_crc8_() == crc8 && this->calc_crc16_() == crc16;
 }
+
+}  // namespace haier
