@@ -1,5 +1,6 @@
 #pragma once
 
+#include <deque>
 #include "esphome/components/uart/uart.h"
 
 namespace esphome {
@@ -9,20 +10,21 @@ class Frame {
   friend class FrameReader;
 
  public:
+  typedef std::vector<uint8_t> buffer_t;
+
  protected:
-  std::vector<uint8_t> data_;
-  bool get_bit_(size_t idx, size_t nbit) const { return this->data_[idx] & (1 << nbit); }
-  void set_bit_(bool value, size_t idx, size_t nbit) {
+  buffer_t data_;
+  bool get_bit(size_t idx, size_t nbit) const { return this->data_[idx] & (1 << nbit); }
+  void set_bit(bool value, size_t idx, size_t nbit) {
     if (value)
       this->data_[idx] |= (1 << nbit);
     else
       this->data_[idx] &= ~(1 << nbit);
   }
-  uint8_t get_data_(size_t idx, uint8_t bitmask = 0xFF, size_t shift = 0) const {
+  uint8_t get_data(size_t idx, uint8_t bitmask = 0xFF, size_t shift = 0) const {
     return (this->data_[idx] & bitmask) >> shift;
   }
-  /// Set value to data buffer on specified index, bitmask
-  void set_data_(uint8_t value, size_t idx, uint8_t bitmask = 0xFF, size_t shift = 0) {
+  void set_data(uint8_t value, size_t idx, uint8_t bitmask = 0xFF, size_t shift = 0) {
     this->data_[idx] &= ~bitmask;
     this->data_[idx] |= (value << shift) & bitmask;
   }
@@ -30,14 +32,14 @@ class Frame {
 
 class FrameReader : public Frame, public Component {
  public:
-  using receive_cb = std::function<bool(uint8_t, std::vector<uint8_t> &)>;
-  using callback = std::function<void(FrameReader &)>;
+  using on_receive_cb = std::function<bool(uint8_t, buffer_t &)>;
+  using on_frame_cb = std::function<void(FrameReader &)>;
   // Set UART component
   void set_uart_parent(UARTComponent *parent) { this->uart_ = parent; }
   // Set callback function
-  void on_frame(callback cb) { this->cb_ = cb; }
+  void on_frame(on_frame_cb fn) { this->on_frame_cb_ = fn; }
   // Set callback function
-  void on_receive(receive_cb cb) { this->receive_cb_ = cb; }
+  void on_receive(on_receive_cb fn) { this->on_receive_cb_ = fn; }
   // Write this frame to UART
   void write() { this->write(*this); }
   // Write other frame to UART
@@ -47,8 +49,9 @@ class FrameReader : public Frame, public Component {
 
  protected:
   UARTComponent *uart_{};
-  receive_cb receive_cb_{};
-  callback cb_{};
+  
+  on_receive_cb on_receive_cb_;
+  on_frame_cb on_frame_cb_;
 };
 
 }  // namespace uart
