@@ -86,10 +86,22 @@ class Frame {
   const uint8_t &operator[](size_t idx) const { return this->data_[idx]; }
   template<typename T> T get_le(size_t idx) const { return get_buffer_data_le(&this->data_[idx]); }
   template<typename T> T get_be(size_t idx) const { return get_buffer_data_be(&this->data_[idx]); }
-  template<typename T> void set_le(const T &data, size_t idx) { set_buffer_data_le(&this->data_[idx], data); }
-  template<typename T> void set_be(const T &data, size_t idx) { set_buffer_data_be(&this->data_[idx], data); }
-  template<typename T> void append_le(const T &data) { append_buffer_data_le(this->data_, data); }
-  template<typename T> void append_be(const T &data) { append_buffer_data_be(this->data_, data); }
+  template<typename T> Frame &set_le(const T &data, size_t idx) {
+    set_buffer_data_le(&this->data_[idx], data);
+    return *this;
+  }
+  template<typename T> Frame &set_be(const T &data, size_t idx) {
+    set_buffer_data_be(&this->data_[idx], data);
+    return *this;
+  }
+  template<typename T> Frame &append_le(const T &data) {
+    append_buffer_data_le(this->data_, data);
+    return *this;
+  }
+  template<typename T> Frame &append_be(const T &data) {
+    append_buffer_data_be(this->data_, data);
+    return *this;
+  }
 
  protected:
   std::vector<uint8_t> data_;
