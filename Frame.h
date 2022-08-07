@@ -45,28 +45,38 @@ class Frame {
   friend class FrameReader;
 
  public:
- protected:
-  std::vector<uint8_t> data_;
-  bool get_bit(size_t idx, size_t nbit) const { return this->data_[idx] & (1 << nbit); }
-  void set_bit(bool value, size_t idx, size_t nbit) {
+  Frame &set_bit(bool value, size_t idx, size_t nbit) {
     if (value)
       this->data_[idx] |= (1 << nbit);
     else
       this->data_[idx] &= ~(1 << nbit);
+    return *this;
+  }
+  bool get_bit(size_t idx, size_t nbit) const { return this->data_[idx] & (1 << nbit); }
+  Frame &set_data(uint8_t value, size_t idx, uint8_t bitmask = 0xFF, size_t shift = 0) {
+    this->data_[idx] &= ~bitmask;
+    this->data_[idx] |= (value << shift) & bitmask;
+    return *this;
   }
   uint8_t get_data(size_t idx, uint8_t bitmask = 0xFF, size_t shift = 0) const {
     return (this->data_[idx] & bitmask) >> shift;
   }
-  void set_data(uint8_t value, size_t idx, uint8_t bitmask = 0xFF, size_t shift = 0) {
-    this->data_[idx] &= ~bitmask;
-    this->data_[idx] |= (value << shift) & bitmask;
+  Frame &append(uint8_t data) {
+    this->data_.push_back(data);
+    return *this;
   }
+  Frame &operator+=(const uint8_t &data) { return this->append(data); }
+  uint8_t &operator[](size_t idx) { return this->data_[idx]; }
+  const uint8_t &operator[](size_t idx) const { return this->data_[idx]; }
   template<typename T> T get_le(size_t idx) const { return get_buffer_data_le(&this->data_[idx]); }
   template<typename T> T get_be(size_t idx) const { return get_buffer_data_be(&this->data_[idx]); }
   template<typename T> void set_le(const T &data, size_t idx) { set_buffer_data_le(&this->data_[idx], data); }
   template<typename T> void set_be(const T &data, size_t idx) { set_buffer_data_be(&this->data_[idx], data); }
   template<typename T> void append_le(const T &data) { append_buffer_data_le(this->data_, data); }
   template<typename T> void append_be(const T &data) { append_buffer_data_be(this->data_, data); }
+
+ protected:
+  std::vector<uint8_t> data_;
 };
 
 class FrameReader : public Frame, public Component {
