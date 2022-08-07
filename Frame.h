@@ -45,6 +45,10 @@ class Frame {
   friend class FrameReader;
 
  public:
+  Frame(const uint8_t *data, size_t size) : data_(data, data + size) {}
+  Frame(const std::vector<uint8_t> &data) : data_(data) {}
+  Frame(std::vector<uint8_t> &&data) : data_(data) {}
+  size_t get_size() const { return this->data_.size(); }
   Frame &set_bit(bool value, size_t idx, size_t nbit) {
     if (value)
       this->data_[idx] |= (1 << nbit);
@@ -104,7 +108,7 @@ class FrameReader : public Frame, public Component {
 };
 
 class Protocol {
-  virtual bool on_data(uint8_t data, std::vector<uint8_t> &buffer) = 0;
+  virtual bool on_byte(Frame &frame, uint8_t data) = 0;
   virtual void on_frame(FrameReader &reader) = 0;
 };
 
