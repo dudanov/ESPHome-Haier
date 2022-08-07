@@ -69,6 +69,14 @@ class Frame {
     this->data_.push_back(data);
     return *this;
   }
+  Frame &append(const uint8_t *data, size_t size) {
+    this->data_.insert(this->data_.end(), data, data + size);
+    return *this;
+  }
+  Frame &append(const std::vector<uint8_t> &data) {
+    this->data_.insert(this->data_.end(), data.begin(), data.end());
+    return *this;
+  }
   Frame &operator+=(const uint8_t &data) { return this->append(data); }
   uint8_t &operator[](size_t idx) { return this->data_[idx]; }
   const uint8_t &operator[](size_t idx) const { return this->data_[idx]; }
@@ -108,7 +116,7 @@ class FrameReader : public Frame, public Component {
 };
 
 class Protocol {
-  virtual bool on_byte(Frame &frame, uint8_t data) = 0;
+  virtual bool on_data(Frame &frame, uint8_t data) = 0;
   virtual void on_frame(FrameReader &reader) = 0;
 };
 
