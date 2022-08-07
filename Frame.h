@@ -77,6 +77,10 @@ class Frame {
     this->data_.insert(this->data_.end(), data.begin(), data.end());
     return *this;
   }
+  Frame &append(std::initializer_list<uint8_t> data) {
+    this->data_.insert(this->data_.end(), data);
+    return *this;
+  }
   Frame &operator+=(const uint8_t &data) { return this->append(data); }
   uint8_t &operator[](size_t idx) { return this->data_[idx]; }
   const uint8_t &operator[](size_t idx) const { return this->data_[idx]; }
