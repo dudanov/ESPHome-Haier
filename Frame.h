@@ -132,7 +132,7 @@ class FrameReader : public Frame, public Component {
 };
 
 class Protocol {
-  virtual bool on_data(Frame &frame, uint8_t data) = 0;
+  virtual bool on_data(Frame &frame, const uint8_t *data, size_t size) = 0;
   virtual void on_frame(FrameReader &reader) = 0;
 };
 
