@@ -154,7 +154,7 @@ class Frame {
     return *this;
   }
   Frame &append(std::initializer_list<uint8_t> data) {
-    this->data_.insert(this->data_.end(), data);
+    this->data_.insert(this->data_.end(), data.begin(), data.end());
     return *this;
   }
   Frame &operator+=(const uint8_t &data) { return this->append(data); }
