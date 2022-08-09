@@ -119,7 +119,7 @@ template<typename T, size_t size_> class StaticVector {
 
  private:
   iterator end_;
-  std::array<T, size_> buf_;
+  std::array<value_type, size_> buf_;
 };
 
 class Frame {
