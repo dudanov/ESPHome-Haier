@@ -106,6 +106,7 @@ template<typename T, size_t size_> class StaticVector {
   void pop_back() { --this->end_; }
   const_reference front() const { return this->buf_.front(); }
   const_reference back() const { return *(this->end() - 1); }
+  constexpr pointer data() { return this->buf_.data(); }
   constexpr const_pointer data() const { return this->buf_.data(); }
   size_t size() const { return std::distance(this->cbegin(), this->cend()); }
   constexpr size_t capacity() const { return size_; }
