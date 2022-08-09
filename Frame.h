@@ -41,6 +41,82 @@ template<typename T> void append_buffer_data_be(std::vector<uint8_t> &buffer, co
     buffer.push_back(static_cast<uint8_t>(data >> (--n * 8)));
 }
 
+// Простой статический вектор
+template<typename _Tp, std::size_t _size>
+class StaticVector {
+ public:
+  typedef _Tp value_type;
+  typedef _Tp* iterator;
+  typedef const _Tp* const_iterator;
+  typedef _Tp* pointer;
+  typedef const _Tp* const_pointer;
+  typedef _Tp& reference;
+  typedef const _Tp& const_reference;
+  StaticVector() : m_end(m_buf.begin()) {}
+  StaticVector(const StaticVector &s) { this->assign(s.cbegin(), s.cend()); }
+  StaticVector(const_pointer data, std::size_t size) { this->assign(data, data + size); }
+  StaticVector(std::initializer_list<_Tp> list) { this->assign(list.begin(), list.end()); }
+  void assign(const_iterator begin, const_iterator end) { this->m_end = std::copy(begin, end, this->begin()); }
+  void fill(iterator pos, std::size_t n, const_reference val) { this->m_end = std::fill_n(pos, n, val); }
+  void fill(std::size_t idx, std::size_t n, const_reference val) { this->fill(this->begin() + idx, n, val); }
+  void fill(std::size_t n, const_reference val) { this->fill(this->begin(), n, val); }
+  iterator begin() { return this->m_buf.begin(); }
+  iterator end() { return this->m_end; }
+  const_iterator begin() const { return this->m_buf.begin(); }
+  const_iterator end() const { return this->m_end; }
+  const_iterator cbegin() const { return this->m_buf.begin(); }
+  const_iterator cend() const { return this->m_end; }
+  void clear() { this->m_end = this->m_buf.begin(); }
+  void trim(std::size_t idx) { this->m_end = &this->m_buf[idx]; }
+  // Удаляет первый равный элемент
+  void remove_first(const_reference val) {
+    for (auto it = this->begin(); it != this->end(); ++it) {
+      if (*it == val) {
+        erase(it);
+        return;
+      }
+    }
+  }
+  // Удаляет все равные элементы
+  void remove(const_reference val) {
+    for (auto it = this->begin(); it != this->end(); ) {
+      if (*it == val)
+        it = erase(it);
+      else
+        ++it;
+    }
+  }
+  // Эффективно удаляет элемент, заменяя на крайний если таковым не является.
+  // Размер уменьшается на единицу. Порядок элементов нарушается!
+  // Для совместимости возвращает итератор на следующий элемент.
+  iterator erase(iterator it) {
+    if (!this->last(it))
+      *it = std::move(this->back());
+    this->pop_back();
+    return it;
+  }
+  bool last(std::size_t idx) const { return (idx + 1) == this->size(); }
+  bool last(const_iterator it) const { return std::next(it) == this->cend(); }
+  bool valid(std::size_t idx) const { return idx < this->size(); }
+  bool empty() const { return this->cend() == this->cbegin(); }
+  void push_back(const_reference data) { *this->m_end++ = data; }
+  void pop_back() { --this->m_end; }
+  const_reference front() const { return *this->cbegin(); }
+  const_reference back() const { return *(this->cend() - 1); }
+  const_pointer data() const { return this->m_buf.data(); }
+  std::size_t size() const { return std::distance(this->cbegin(), this->cend()); }
+  std::size_t capacity() const { return _size; }
+  std::size_t max_size() const { return _size; }
+  std::size_t free_size() const { return this->max_size() - this->size(); }
+  reference at(size_t idx) { return *(this->begin() + idx); }
+  const_reference at(size_t idx) const { return *(this->cbegin() + idx); }
+  reference operator[](size_t idx) { return this->m_buf[idx]; }
+  const_reference operator[](size_t idx) const { return this->m_buf[idx]; }
+ private:
+  iterator m_end;
+  std::array<_Tp, _size> m_buf;
+};
+
 class Frame {
   friend class FrameReader;
 
