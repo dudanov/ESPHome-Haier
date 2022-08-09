@@ -41,8 +41,7 @@ template<typename T> void append_buffer_data_be(std::vector<uint8_t> &buffer, co
     buffer.push_back(static_cast<uint8_t>(data >> (--n * 8)));
 }
 
-// Простой статический вектор
-template<typename T, size_t size_> class StaticVector {
+template<typename T, size_t size_> class static_vector {
  public:
   typedef T value_type;
   typedef value_type *iterator;
@@ -51,47 +50,58 @@ template<typename T, size_t size_> class StaticVector {
   typedef const value_type *const_pointer;
   typedef value_type &reference;
   typedef const value_type &const_reference;
-  StaticVector() : end_(this->buf_.begin()) {}
-  StaticVector(const StaticVector &s) { this->assign(s.begin(), s.end()); }
-  StaticVector(const_pointer data, size_t size) { this->assign(data, data + size); }
-  StaticVector(std::initializer_list<T> list) { this->assign(list.begin(), list.end()); }
-  void assign(const_iterator begin, const_iterator end) { this->end_ = std::copy(begin, end, this->begin()); }
-  void fill(iterator pos, ssize_t n, const_reference value) { this->end_ = std::fill_n(pos, n, value); }
-  void fill(size_t idx, ssize_t n, const_reference value) { this->fill(this->begin() + idx, n, value); }
-  void fill(size_t n, const_reference value) { this->fill(this->begin(), n, value); }
+  static_vector() : end_(this->buf_.begin()) {}
+  static_vector(const static_vector &s) { this->assign(s.begin(), s.end()); }
+  static_vector(const_pointer data, size_t size) { this->assign(data, data + size); }
+  static_vector(std::initializer_list<T> list) { this->assign(list.begin(), list.end()); }
   constexpr iterator begin() { return this->buf_.begin(); }
   constexpr const_iterator begin() const { return this->buf_.begin(); }
   constexpr const_iterator cbegin() const { return this->buf_.begin(); }
   iterator end() { return this->end_; }
   const_iterator end() const { return this->end_; }
   const_iterator cend() const { return this->end_; }
+  constexpr pointer data() { return this->buf_.data(); }
+  constexpr const_pointer data() const { return this->buf_.data(); }
+  size_t size() const { return std::distance(this->begin(), this->end()); }
+  constexpr size_t capacity() const { return size_; }
+  constexpr size_t max_size() const { return size_; }
+  size_t free_size() const { return this->max_size() - this->size(); }
+  bool empty() const { return this->end() == this->begin(); }
   void clear() { this->end_ = this->begin(); }
+  void push_back(const_reference data) { *this->end_++ = data; }
+  void pop_back() { --this->end_; }
+  constexpr const_reference front() const { return this->buf_.front(); }
+  const_reference back() const { return *std::prev(this->end_); }
+  reference at(size_t idx) { return this->buf_.at(idx); }
+  const_reference at(size_t idx) const { return this->buf_.at(idx); }
+  reference operator[](size_t idx) { return this->buf_[idx]; }
+  const_reference operator[](size_t idx) const { return this->buf_[idx]; }
+
+  void assign(const_iterator begin, const_iterator end) { this->end_ = std::copy(begin, end, this->begin()); }
+  void fill(iterator pos, ssize_t n, const_reference value) { this->end_ = std::fill_n(pos, n, value); }
+  void fill(size_t idx, ssize_t n, const_reference value) { this->fill(this->begin() + idx, n, value); }
+  void fill(size_t n, const_reference value) { this->fill(this->begin(), n, value); }
   void resize(size_t new_size) { this->end_ = this->begin() + new_size; }
   void resize(size_t new_size, const_reference value) {
     this->fill(this->end(), new_size - this->size(), value);
     this->resize(new_size);
   }
-  // Удаляет первый равный элемент
-  void remove_first(const_reference val) {
+  void remove_first(const_reference value) {
     for (auto it = this->begin(); it != this->end(); ++it) {
-      if (*it == val) {
+      if (*it == value) {
         erase(it);
         return;
       }
     }
   }
-  // Удаляет все равные элементы
-  void remove(const_reference val) {
+  void remove(const_reference value) {
     for (auto it = this->begin(); it != this->end();) {
-      if (*it == val)
+      if (*it == value)
         it = erase(it);
       else
         ++it;
     }
   }
-  // Эффективно удаляет элемент, заменяя на крайний если таковым не является.
-  // Размер уменьшается на единицу. Порядок элементов нарушается!
-  // Для совместимости возвращает итератор на следующий элемент.
   iterator erase(iterator it) {
     if (!this->last(it))
       *it = std::move(this->back());
@@ -99,23 +109,8 @@ template<typename T, size_t size_> class StaticVector {
     return it;
   }
   bool last(size_t idx) const { return (idx + 1) == this->size(); }
-  bool last(const_iterator it) const { return std::next(it) == this->cend(); }
+  bool last(const_iterator it) const { return std::next(it) == this->end(); }
   bool valid(size_t idx) const { return idx < this->size(); }
-  bool empty() const { return this->end() == this->begin(); }
-  void push_back(const_reference data) { *this->end_++ = data; }
-  void pop_back() { --this->end_; }
-  const_reference front() const { return this->buf_.front(); }
-  const_reference back() const { return *(this->end() - 1); }
-  constexpr pointer data() { return this->buf_.data(); }
-  constexpr const_pointer data() const { return this->buf_.data(); }
-  size_t size() const { return std::distance(this->cbegin(), this->cend()); }
-  constexpr size_t capacity() const { return size_; }
-  constexpr size_t max_size() const { return size_; }
-  size_t free_size() const { return this->max_size() - this->size(); }
-  reference at(size_t idx) { return this->buf_.at(idx); }
-  const_reference at(size_t idx) const { return this->buf_.at(idx); }
-  reference operator[](size_t idx) { return this->buf_[idx]; }
-  const_reference operator[](size_t idx) const { return this->buf_[idx]; }
 
  private:
   iterator end_;
