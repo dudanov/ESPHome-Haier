@@ -70,7 +70,9 @@ template<typename T, size_t size_> class static_vector {
   void clear() { this->end_ = this->begin(); }
   void push_back(const_reference data) { *this->end_++ = data; }
   void pop_back() { --this->end_; }
+  constexpr reference front() { return this->buf_.front(); }
   constexpr const_reference front() const { return this->buf_.front(); }
+  reference back() { return *std::prev(this->end_); }
   const_reference back() const { return *std::prev(this->end_); }
   reference at(size_t idx) { return this->buf_.at(idx); }
   const_reference at(size_t idx) const { return this->buf_.at(idx); }
@@ -89,7 +91,7 @@ template<typename T, size_t size_> class static_vector {
   void remove_first(const_reference value) {
     for (auto it = this->begin(); it != this->end(); ++it) {
       if (*it == value) {
-        erase(it);
+        this->erase(it);
         return;
       }
     }
@@ -97,7 +99,7 @@ template<typename T, size_t size_> class static_vector {
   void remove(const_reference value) {
     for (auto it = this->begin(); it != this->end();) {
       if (*it == value)
-        it = erase(it);
+        it = this->erase(it);
       else
         ++it;
     }
