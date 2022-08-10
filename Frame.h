@@ -8,6 +8,7 @@ namespace esphome {
 namespace uart {
 
 template<typename T> T get_buffer_data_le(const uint8_t *buffer) {
+  static_assert(std::is_integral<T>::value, "T must be an integer.");
   T data = 0;
   for (size_t n = 0; n < sizeof(T); n++)
     data |= static_cast<T>(*buffer++) << (n * 8);
@@ -15,6 +16,7 @@ template<typename T> T get_buffer_data_le(const uint8_t *buffer) {
 }
 
 template<typename T> T get_buffer_data_be(const uint8_t *buffer) {
+  static_assert(std::is_integral<T>::value, "T must be an integer.");
   T data = 0;
   for (size_t n = sizeof(T); n;)
     data |= static_cast<T>(*buffer++) << (--n * 8);
@@ -22,21 +24,25 @@ template<typename T> T get_buffer_data_be(const uint8_t *buffer) {
 }
 
 template<typename T> void set_buffer_data_le(uint8_t *buffer, const T &data) {
+  static_assert(std::is_integral<T>::value, "T must be an integer.");
   for (size_t n = 0; n < sizeof(T); n++)
     *buffer++ = static_cast<uint8_t>(data >> (n * 8));
 }
 
 template<typename T> void set_buffer_data_be(uint8_t *buffer, const T &data) {
+  static_assert(std::is_integral<T>::value, "T must be an integer.");
   for (size_t n = sizeof(T); n;)
     *buffer++ = static_cast<uint8_t>(data >> (--n * 8));
 }
 
 template<typename T> void append_buffer_data_le(std::vector<uint8_t> &buffer, const T &data) {
+  static_assert(std::is_integral<T>::value, "T must be an integer.");
   for (size_t n = 0; n < sizeof(T); n++)
     buffer.push_back(static_cast<uint8_t>(data >> (n * 8)));
 }
 
 template<typename T> void append_buffer_data_be(std::vector<uint8_t> &buffer, const T &data) {
+  static_assert(std::is_integral<T>::value, "T must be an integer.");
   for (size_t n = sizeof(T); n;)
     buffer.push_back(static_cast<uint8_t>(data >> (--n * 8)));
 }
