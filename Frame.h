@@ -168,21 +168,31 @@ class Frame {
   Frame &operator+=(const uint8_t &data) { return this->append(data); }
   uint8_t &operator[](size_t idx) { return this->data_[idx]; }
   const uint8_t &operator[](size_t idx) const { return this->data_[idx]; }
-  template<typename T> T get_le(size_t idx) const { return get_buffer_data_le(&this->data_[idx]); }
-  template<typename T> T get_be(size_t idx) const { return get_buffer_data_be(&this->data_[idx]); }
+  template<typename T> T get_le(size_t idx) const {
+    static_assert(std::is_integral<T>::value, "T must be an integer.");
+    return get_buffer_data_le(&this->data_[idx]);
+  }
+  template<typename T> T get_be(size_t idx) const {
+    static_assert(std::is_integral<T>::value, "T must be an integer.");
+    return get_buffer_data_be(&this->data_[idx]);
+  }
   template<typename T> Frame &set_le(const T &data, size_t idx) {
+    static_assert(std::is_integral<T>::value, "T must be an integer.");
     set_buffer_data_le(&this->data_[idx], data);
     return *this;
   }
   template<typename T> Frame &set_be(const T &data, size_t idx) {
+    static_assert(std::is_integral<T>::value, "T must be an integer.");
     set_buffer_data_be(&this->data_[idx], data);
     return *this;
   }
   template<typename T> Frame &append_le(const T &data) {
+    static_assert(std::is_integral<T>::value, "T must be an integer.");
     append_buffer_data_le(this->data_, data);
     return *this;
   }
   template<typename T> Frame &append_be(const T &data) {
+    static_assert(std::is_integral<T>::value, "T must be an integer.");
     append_buffer_data_be(this->data_, data);
     return *this;
   }
